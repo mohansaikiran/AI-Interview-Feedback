@@ -1,0 +1,49 @@
+services:
+  mongo:
+    image: mongo:7
+    container_name: interview-mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.runCommand({ ping: 1 }).ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+    container_name: interview-backend
+    depends_on:
+      mongo:
+        condition: service_healthy
+    env_file:
+      - ./deployments/env/backend.env
+    ports:
+      - "4000:4000"
+    environment:
+      # Make sure backend uses the docker network host for mongo
+      MONGO_URI: mongodb://mongo:27017/interviews
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:4000/api/health | grep -q '\"ok\":true'"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: interview-frontend
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "5173:80"
+    # If you want to inject env at build time, do it via VITE_ vars in build args.
+    # For now, we rely on nginx proxy /api -> backend.
+
+volumes:
+  mongo_data:
