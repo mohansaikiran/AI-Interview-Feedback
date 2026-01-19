@@ -1,5 +1,3 @@
-# b983e44486cb488c9d1bd3c915698077
-
 # Candidate Interview App
 
 Lightweight one-shot interview app that records answers to 5 questions and returns an immutable AI-generated feedback record evaluating three skills: Communication, Problem Solving, and Empathy.
