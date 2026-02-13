@@ -14,7 +14,7 @@ export class InterviewsService {
     @InjectModel(Feedback.name)
     private feedbackModel: Model<FeedbackDocument>,
     private aiService: AiAnalysisService,
-  ) {}
+  ) { }
 
   private readonly logger = new Logger(InterviewsService.name);
 
@@ -22,6 +22,12 @@ export class InterviewsService {
     userId: string,
     answers: { questionId: string; response: string }[],
   ) {
+    //check if there's an existing interview
+    const interviewExists = await this.interviewModel.findOne({ userId: new Types.ObjectId(userId), });
+    if (interviewExists) {
+      throw new BadRequestException('User has already completed the interview');
+    }
+
     if (answers.length !== INTERVIEW_QUESTIONS.length) {
       throw new BadRequestException('All questions must be answered');
     }
@@ -60,55 +66,55 @@ export class InterviewsService {
       feedback: {
         scores: analysis.scores,
         explanations: analysis.explanations,
-    },
+      },
     };
   }
 
   async getHistory(userId: string) {
-   const feedbacks = await this.feedbackModel
-    .find({ userId: new Types.ObjectId(userId) })
-    .sort({ createdAt: -1 })
-    .lean()
-    .exec();
+    const feedbacks = await this.feedbackModel
+      .find({ userId: new Types.ObjectId(userId) })
+      .sort({ createdAt: -1 })
+      .lean()
+      .exec();
 
-  return feedbacks.map((f) => ({
-    interviewId: f.interviewId.toString(),
-    createdAt: f.createdAt,
-    scores: f.scores,
-  }));
+    return feedbacks.map((f) => ({
+      interviewId: f.interviewId.toString(),
+      createdAt: f.createdAt,
+      scores: f.scores,
+    }));
+  }
+
+
+  async getInterviewDetail(userId: string, interviewId: string) {
+    const interviewObjectId = new Types.ObjectId(interviewId);
+    const userObjectId = new Types.ObjectId(userId);
+
+    const interview = await this.interviewModel
+      .findOne({ _id: interviewObjectId, userId: userObjectId })
+      .lean()
+      .exec();
+
+    if (!interview) {
+      this.logger.log(`getInterviewDetail: interview not found interviewId=${interviewId} for userId=${userId}`);
+      return null;
     }
 
+    const feedback = await this.feedbackModel
+      .findOne({ interviewId: interviewObjectId, userId: userObjectId })
+      .lean()
+      .exec();
 
-    async getInterviewDetail(userId: string, interviewId: string) {
-        const interviewObjectId = new Types.ObjectId(interviewId);
-        const userObjectId = new Types.ObjectId(userId);
-
-        const interview = await this.interviewModel
-        .findOne({ _id: interviewObjectId, userId: userObjectId })
-        .lean()
-        .exec();
-
-         if (!interview) {
-            this.logger.log(`getInterviewDetail: interview not found interviewId=${interviewId} for userId=${userId}`);
-             return null;
-         }
-
-        const feedback = await this.feedbackModel
-            .findOne({ interviewId: interviewObjectId, userId: userObjectId })
-            .lean()
-            .exec();
-
-        return {
-            interviewId: interview._id.toString(),
-            questions: interview.questions,
-            answers: interview.answers,
-            feedback: feedback
-            ? {
-                scores: feedback.scores,
-                explanations: feedback.explanations,
-                createdAt: feedback.createdAt,
-                }
-            : null,
-        };
-    }
+    return {
+      interviewId: interview._id.toString(),
+      questions: interview.questions,
+      answers: interview.answers,
+      feedback: feedback
+        ? {
+          scores: feedback.scores,
+          explanations: feedback.explanations,
+          createdAt: feedback.createdAt,
+        }
+        : null,
+    };
+  }
 }

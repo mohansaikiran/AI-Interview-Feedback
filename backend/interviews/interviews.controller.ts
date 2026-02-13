@@ -4,18 +4,20 @@ import { SubmitInterviewDto } from './dto/submit-interview.dto';
 import { InterviewsService } from './interviews.service';
 import { INTERVIEW_QUESTIONS } from './constants/questions';
 import { Param, NotFoundException } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 
 
 @UseGuards(JwtAuthGuard)
 @Controller('interviews')
 export class InterviewsController {
-  constructor(private readonly interviewsService: InterviewsService) {}
+  constructor(private readonly interviewsService: InterviewsService) { }
 
   @Get('questions')
   getQuestions() {
     return INTERVIEW_QUESTIONS;
   }
 
+  @Throttle({ default: { ttl: 60, limit: 5 } }) // Limit to 5 submissions per minute
   @Post()
   submit(@Req() req: any, @Body() dto: SubmitInterviewDto) {
     return this.interviewsService.submitInterview(
@@ -30,16 +32,16 @@ export class InterviewsController {
   }
 
   @Get(':id')
-    async detail(@Req() req: any, @Param('id') id: string) {
-        const result = await this.interviewsService.getInterviewDetail(
-            req.user.userId,
-            id,
-        );
+  async detail(@Req() req: any, @Param('id') id: string) {
+    const result = await this.interviewsService.getInterviewDetail(
+      req.user.userId,
+      id,
+    );
 
-        if (!result) {
-            throw new NotFoundException('Interview not found');
-        }
-
-        return result;
+    if (!result) {
+      throw new NotFoundException('Interview not found');
     }
+
+    return result;
+  }
 }

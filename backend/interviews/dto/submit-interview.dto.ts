@@ -1,4 +1,6 @@
-import { IsArray, IsString, MinLength } from 'class-validator';
+import { Type } from 'class-transformer';
+import { ArrayMaxSize, ArrayMinSize, IsArray, IsString, MinLength, ValidateNested } from 'class-validator';
+
 
 export class InterviewAnswerDto {
   @IsString()
@@ -11,5 +13,9 @@ export class InterviewAnswerDto {
 
 export class SubmitInterviewDto {
   @IsArray()
+  @ArrayMinSize(5)
+  @ArrayMaxSize(5)
+  @ValidateNested({ each: true })
+  @Type(() => InterviewAnswerDto)
   answers: InterviewAnswerDto[];
 }
